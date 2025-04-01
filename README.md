@@ -162,6 +162,11 @@ For support and questions:
 - Open an issue in the repository
 - Contact the development team
 
+## Team Members
+
+- IZERE HIRWA Roger - roger@hdev.rw
+- TURIKUMWENIMANA Daniel - daniel@hdev.rw
+
 ## Acknowledgments
 
 - Built with Internet Computer (ICP)
