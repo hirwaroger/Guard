@@ -55,18 +55,6 @@ Before running MyGuard, ensure you have the following installed:
    chmod +x deploy.sh && ./deploy.sh
    ```
 
-## Development
-
-1. **Start the development server**
-   ```bash
-   npm start
-   ```
-   This will start the frontend development server at `http://localhost:8080`
-
-2. **Build the project**
-   ```bash
-   dfx build
-   ```
 
 ## Project Structure
 
