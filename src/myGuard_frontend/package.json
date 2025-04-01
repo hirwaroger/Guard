@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "setup": "npm i && dfx canister create myGuard_backend && dfx generate myGuard_backend && dfx deploy",
-    "start": "vite --port 3000",
+    "start": "node init && vite --port 3000",
     "prebuild": "dfx generate",
-    "build": "tsc && vite build",
+    "build": "node init && tsc && vite build",
     "format": "prettier --write \"src/**/*.{json,js,jsx,ts,tsx,css,scss}\""
   },
   "dependencies": {
@@ -15,7 +15,8 @@
     "react-dom": "^18.2.0",
     "@dfinity/agent": "^1.4.0",
     "@dfinity/candid": "^1.4.0",
-    "@dfinity/principal": "^1.4.0"
+    "@dfinity/principal": "^1.4.0",
+    "ic-auth": "^3.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.14",

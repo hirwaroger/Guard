@@ -1,7 +1,87 @@
 import { useState, useEffect, useRef } from 'react';
 import { myGuard_backend } from 'declarations/myGuard_backend';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LoginModal from './components/LoginModal';
+import UserProfileMenu from './components/UserProfileMenu';
 
-// Add new TypewriterText component
+// ParseMarkdown utility function to convert markdown-like syntax to JSX
+function parseMarkdown(text) {
+  if (!text) return [];
+  
+  // Split by newlines first
+  const lines = text.split('\n');
+  
+  // Process each line for markdown elements
+  return lines.map((line, lineIndex) => {
+    // Array to hold the processed chunks
+    let processedLine = [];
+    // Current position in the line
+    let currentPos = 0;
+    
+    // Process bold text: **text**
+    const boldRegex = /\*\*(.*?)\*\*/g;
+    let boldMatch;
+    
+    while ((boldMatch = boldRegex.exec(line)) !== null) {
+      // Add text before the match if there is any
+      if (boldMatch.index > currentPos) {
+        processedLine.push({
+          type: 'text',
+          content: line.substring(currentPos, boldMatch.index)
+        });
+      }
+      
+      // Add the bold text
+      processedLine.push({
+        type: 'bold',
+        content: boldMatch[1]
+      });
+      
+      // Update current position
+      currentPos = boldMatch.index + boldMatch[0].length;
+    }
+    
+    // Add any remaining text after the last match
+    if (currentPos < line.length) {
+      processedLine.push({
+        type: 'text',
+        content: line.substring(currentPos)
+      });
+    }
+    
+    // If line is empty, add a placeholder so it renders as a line break
+    if (processedLine.length === 0) {
+      processedLine.push({ type: 'text', content: '' });
+    }
+    
+    return { type: 'line', content: processedLine, index: lineIndex };
+  });
+}
+
+// FormattedText component for markdown rendering
+function FormattedText({ text }) {
+  const parsedText = parseMarkdown(text);
+  
+  return (
+    <>
+      {parsedText.map((line, lineIndex) => (
+        <div key={lineIndex} style={lineIndex > 0 ? { marginTop: '0.5rem' } : {}}>
+          {line.content.map((chunk, chunkIndex) => {
+            switch (chunk.type) {
+              case 'bold':
+                return <strong key={chunkIndex}>{chunk.content}</strong>;
+              case 'text':
+              default:
+                return <span key={chunkIndex}>{chunk.content}</span>;
+            }
+          })}
+        </div>
+      ))}
+    </>
+  );
+}
+
+// Enhanced TypewriterText component with formatting support
 function TypewriterText({ text, speed = 30, onComplete = () => {} }) {
   const [displayedText, setDisplayedText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -28,10 +108,54 @@ function TypewriterText({ text, speed = 30, onComplete = () => {} }) {
     setIsComplete(false);
   }, [text]);
 
-  return <span>{displayedText}<span className="cursor"></span></span>;
+  return (
+    <span>
+      <FormattedText text={displayedText} />
+      <span className="cursor"></span>
+    </span>
+  );
 }
 
-function App() {
+// ProtectedContent component to wrap content that requires authentication
+function ProtectedContent({ children }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      setShowLoginModal(true);
+    }
+  }, [isLoading, isAuthenticated]);
+  
+  if (isLoading) {
+    return <div className="loading-screen">
+      <div className="loading-spinner"></div>
+      <p>Loading MyGuard...</p>
+    </div>;
+  }
+  
+  return (
+    <>
+      {showLoginModal && (
+        <LoginModal onClose={() => setShowLoginModal(false)} />
+      )}
+      {isAuthenticated ? children : (
+        <div className="auth-required-message">
+          <h2>Authentication Required</h2>
+          <p>Please connect your wallet to access MyGuard's features.</p>
+          <button 
+            className="connect-button"
+            onClick={() => setShowLoginModal(true)}
+          >
+            Connect Wallet
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function AppContent() {
   const [contractText, setContractText] = useState('');
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -49,6 +173,8 @@ function App() {
   const [isExplaining, setIsExplaining] = useState(false);
   const [animatedMessage, setAnimatedMessage] = useState(null);
   const [typingMessageId, setTypingMessageId] = useState(null);
+  const { isAuthenticated, user } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     myGuard_backend.get_dataset_size()
@@ -164,7 +290,7 @@ function App() {
       case "Allowed": return "No problem with this";
       case "Not Allowed": return "This is risky";
       case "Unclassified": return "Neutral";
-      default: return "";
+      default: return "Neutral";
     }
   }
 
@@ -279,116 +405,136 @@ function App() {
             <h1>MyGuard</h1>
             <p className="tagline">AI-Powered Contract Analysis</p>
           </div>
+          
+          {/* Add authentication UI */}
+          <div className="auth-container">
+            {isAuthenticated ? (
+              <UserProfileMenu />
+            ) : (
+              <button 
+                className="login-button"
+                onClick={() => setShowLoginModal(true)}
+              >
+                Connect Wallet
+              </button>
+            )}
+          </div>
         </div>
       </header>
       
+      {showLoginModal && (
+        <LoginModal onClose={() => setShowLoginModal(false)} />
+      )}
+      
       <main className="content">
-        <section className="analyzer-section">
-          <h2>Analyze Your Contract</h2>
-          
-          <div className="privacy-notice">
-            <strong>Notice:</strong> For demonstration purposes only. Do not input sensitive information.
-          </div>
-          
-          <form onSubmit={handleAnalyzeContract} className="contract-form">
-            <div className="input-container">
-              <textarea
-                id="contractText"
-                value={contractText}
-                onChange={(e) => setContractText(e.target.value)}
-                placeholder="Paste your contract text here..."
-                className="contract-textarea"
-              ></textarea>
+        <ProtectedContent>
+          <section className="analyzer-section">
+            <h2>Analyze Your Contract</h2>
+            
+            <div className="privacy-notice">
+              <strong>Notice:</strong> For demonstration purposes only. Do not input sensitive information.
             </div>
             
-            <button 
-              type="submit" 
-              disabled={isAnalyzing || !systemReady} 
-              className={`analyze-button ${isAnalyzing ? 'analyzing' : ''}`}
-            >
-              {isAnalyzing ? (
-                <span className="analyzing-text">
-                  <span className="dot-animation">
-                    <span className="dot">.</span>
-                    <span className="dot">.</span>
-                    <span className="dot">.</span>
+            <form onSubmit={handleAnalyzeContract} className="contract-form">
+              <div className="input-container">
+                <textarea
+                  id="contractText"
+                  value={contractText}
+                  onChange={(e) => setContractText(e.target.value)}
+                  placeholder="Paste your contract text here..."
+                  className="contract-textarea"
+                ></textarea>
+              </div>
+              
+              <button 
+                type="submit" 
+                disabled={isAnalyzing || !systemReady} 
+                className={`analyze-button ${isAnalyzing ? 'analyzing' : ''}`}
+              >
+                {isAnalyzing ? (
+                  <span className="analyzing-text">
+                    <span className="dot-animation">
+                      <span className="dot">.</span>
+                      <span className="dot">.</span>
+                      <span className="dot">.</span>
+                    </span>
+                    <span>Analyzing</span>
                   </span>
-                  <span>Analyzing</span>
-                </span>
-              ) : 'Analyze Contract'}
-            </button>
-          </form>
-          
-          {analysisResult && (
-            <div className="analysis-results">
-              <h3>Analysis Results</h3>
-              
-              <div className="results-summary">
-                <div className="summary-card">
-                  <div className="summary-value">{analysisResult.total_clauses.toString()}</div>
-                  <div className="summary-label">Total Clauses</div>
+                ) : 'Analyze Contract'}
+              </button>
+            </form>
+            
+            {analysisResult && (
+              <div className="analysis-results">
+                <h3>Analysis Results</h3>
+                
+                <div className="results-summary">
+                  <div className="summary-card">
+                    <div className="summary-value">{analysisResult.total_clauses.toString()}</div>
+                    <div className="summary-label">Total Clauses</div>
+                  </div>
+                  <div className="summary-card safe">
+                    <div className="summary-value">{analysisResult.allowed_clauses.toString()}</div>
+                    <div className="summary-label">Safe Clauses</div>
+                  </div>
+                  <div className="summary-card risky">
+                    <div className="summary-value">{analysisResult.not_allowed_clauses.toString()}</div>
+                    <div className="summary-label">Risky Clauses</div>
+                  </div>
                 </div>
-                <div className="summary-card safe">
-                  <div className="summary-value">{analysisResult.allowed_clauses.toString()}</div>
-                  <div className="summary-label">Safe Clauses</div>
-                </div>
-                <div className="summary-card risky">
-                  <div className="summary-value">{analysisResult.not_allowed_clauses.toString()}</div>
-                  <div className="summary-label">Risky Clauses</div>
-                </div>
-              </div>
-              
-              {analysisResult.not_allowed_clauses > 0 && (
-                <div className="risk-alert">
-                  <strong>Attention:</strong> {analysisResult.not_allowed_clauses.toString} potentially risky clause{analysisResult.not_allowed_clauses !== 1 ? 's' : ''} detected
-                </div>
-              )}
-              
-              <div className="clause-results">
-                <h4>Clause Analysis:</h4>
-                <ul className="clause-list">
-                  {analysisResult.clause_breakdown.map((item, index) => (
-                    <li 
-                      key={index}
-                      className={`clause-item ${item.label.toLowerCase().replace(' ', '-')}`}
-                    >
-                      <div className="clause-status">
-                        {getStatusText(item.label)}
-                        {item.label === "Not Allowed" && (
-                          <button 
-                            onClick={() => handleExplainClause(item.clause)}
-                            className="why-button"
-                            disabled={isExplaining || (clauseExplanations[item.clause] && !clauseExplanations[item.clause].loading)}
-                          >
-                            {clauseExplanations[item.clause]?.loading ? (
-                              <span className="button-dots">
-                                <span className="dot"></span>
-                                <span className="dot"></span>
-                                <span className="dot"></span>
-                              </span>
-                            ) : (clauseExplanations[item.clause] ? "✓" : "Why?")}
-                          </button>
-                        )}
-                      </div>
-                      <div className="clause-content">{item.clause}</div>
-                      {clauseExplanations[item.clause] && !clauseExplanations[item.clause].loading && (
-                        <div className="clause-explanation">
-                          <div className="explanation-icon">💡</div>
-                          <div className="explanation-text">
-                            <TypewriterText 
-                              text={clauseExplanations[item.clause].text} 
-                              speed={15}
-                            />
-                          </div>
+                
+                {analysisResult.not_allowed_clauses > 0 && (
+                  <div className="risk-alert">
+                    <strong>Attention:</strong> {analysisResult.not_allowed_clauses.toString} potentially risky clause{analysisResult.not_allowed_clauses !== 1 ? 's' : ''} detected
+                  </div>
+                )}
+                
+                <div className="clause-results">
+                  <h4>Clause Analysis:</h4>
+                  <ul className="clause-list">
+                    {analysisResult.clause_breakdown.map((item, index) => (
+                      <li 
+                        key={index}
+                        className={`clause-item ${item.label.toLowerCase().replace(' ', '-')}`}
+                      >
+                        <div className="clause-status">
+                          {getStatusText(item.label)}
+                          {item.label === "Not Allowed" && (
+                            <button 
+                              onClick={() => handleExplainClause(item.clause)}
+                              className="why-button"
+                              disabled={isExplaining || (clauseExplanations[item.clause] && !clauseExplanations[item.clause].loading)}
+                            >
+                              {clauseExplanations[item.clause]?.loading ? (
+                                <span className="button-dots">
+                                  <span className="dot"></span>
+                                  <span className="dot"></span>
+                                  <span className="dot"></span>
+                                </span>
+                              ) : (clauseExplanations[item.clause] ? "✓" : "Why?")}
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                        <div className="clause-content">{item.clause}</div>
+                        {clauseExplanations[item.clause] && !clauseExplanations[item.clause].loading && (
+                          <div className="clause-explanation">
+                            <div className="explanation-icon">💡</div>
+                            <div className="explanation-text">
+                              <TypewriterText 
+                                text={clauseExplanations[item.clause].text} 
+                                speed={15}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        </ProtectedContent>
       </main>
       
       <div className={`chatbot-container ${isChatOpen ? 'open' : ''}`}>
@@ -434,8 +580,10 @@ function App() {
                           setAnimatedMessage(null);
                         }}
                       />
-                    ) : (
+                    ) : message.type === 'user' ? (
                       message.text
+                    ) : (
+                      <FormattedText text={message.text} />
                     )}
                   </div>
                 </div>
@@ -464,279 +612,26 @@ function App() {
             </form>
           </div>
         ) : (
-          <>
-            <button className="chatbot-button" onClick={() => setIsChatOpen(true)}>
-              <svg viewBox="0 0 24 24" width="24" height="24">
-                <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-              </svg>
-            </button>
-          </>
+          <button className="chatbot-button" onClick={() => setIsChatOpen(true)}>
+            <svg viewBox="0 0 24 24" width="24" height="24">
+              <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
+          </button>
         )}
       </div>
       
       <footer className="app-footer">
         <p>MyGuard &copy; 2025 | AI-Powered Contract Analysis | Educational purposes only</p>
       </footer>
-      
-      <style jsx>{`
-        .app-container {
-          display: flex;
-          flex-direction: column;
-          min-height: 100vh;
-          background: #f7fafc;
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          color: #2d3748;
-        }
-        
-        .app-header {
-          background-color: #2c5282;
-          padding: 20px;
-          color: white;
-          text-align: center;
-        }
-        
-        .header-content {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 10px;
-        }
-        
-        .brand-container h1 {
-          margin: 0;
-          font-size: 2.5em;
-        }
-        
-        .brand-container .tagline {
-          font-size: 1.2em;
-          font-weight: 300;
-        }
-        
-        main.content {
-          flex: 1;
-          padding: 20px;
-          max-width: 1000px;
-          margin: 0 auto;
-        }
-        
-        .welcome-modal {
-          background: #fff;
-          border-radius: 8px;
-          padding: 20px;
-          width: 90%;
-          max-width: 500px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          margin: 20px auto;
-          text-align: center;
-        }
-        
-        /* Improve spacing on the analysis results section */
-        .analysis-results {
-          margin-top: 30px;
-          padding: 20px;
-          background: #fff;
-          border-radius: 8px;
-          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        /* Style chatbot container and button for better visual appeal */
-        .chatbot-button {
-          position: fixed;
-          right: 20px;
-          bottom: 20px;
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          background-color: #2c5282;
-          color: white;
-          border: none;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s ease;
-          z-index: 100;
-        }
-        
-        .chatbot-button:hover {
-          background-color: #3182ce;
-          transform: scale(1.05);
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 600px) {
-          .app-header, main.content, .app-footer {
-            padding: 10px;
-          }
-          .brand-container h1 {
-            font-size: 1.8em;
-          }
-        }
-        
-        .why-button {
-          margin-left: 10px;
-          padding: 2px 8px;
-          background: #5d5d5d;
-          border: none;
-          border-radius: 4px;
-          color: white;
-          font-size: 11px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: background-color 0.3s;
-          min-width: 40px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .why-button:hover {
-          background: #444;
-        }
-        
-        .why-button:disabled {
-          opacity: 0.5;
-          cursor: default;
-        }
-        
-        .clause-explanation {
-          display: flex;
-          background: #f5f5f5;
-          border-left: 3px solid #ff9800;
-          margin-top: 8px;
-          padding: 10px;
-          border-radius: 4px;
-          font-size: 14px;
-          line-height: 1.4;
-        }
-        
-        .explanation-icon {
-          margin-right: 10px;
-          font-size: 16px;
-        }
-        
-        .explanation-text {
-          color: #333;
-        }
-        
-        .typing-indicator {
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-          padding: 8px 0;
-        }
-        
-        .typing-dot {
-          display: inline-block;
-          width: 8px;
-          height: 8px;
-          margin-right: 4px;
-          border-radius: 50%;
-          background-color: #999;
-          animation: bounce 1.3s linear infinite;
-        }
-        
-        .typing-dot:nth-child(2) {
-          animation-delay: 0.15s;
-        }
-        
-        .typing-dot:nth-child(3) {
-          animation-delay: 0.3s;
-        }
-        
-        .analyzing-text {
-          display: flex;
-          align-items: center;
-        }
-        
-        .dot-animation {
-          display: inline-block;
-          margin-right: 4px;
-        }
-        
-        .dot {
-          animation: bounce 1.3s linear infinite;
-          display: inline-block;
-        }
-        
-        .dot:nth-child(2) {
-          animation-delay: 0.15s;
-        }
-        
-        .dot:nth-child(3) {
-          animation-delay: 0.3s;
-        }
-        
-        .button-dots {
-          display: flex;
-          justify-content: center;
-        }
-        
-        .button-dots .dot {
-          width: 4px;
-          height: 4px;
-          background-color: white;
-          border-radius: 50%;
-          margin: 0 2px;
-          animation: bounce 1.3s linear infinite;
-        }
-        
-        .button-dots .dot:nth-child(2) {
-          animation-delay: 0.15s;
-        }
-        
-        .button-dots .dot:nth-child(3) {
-          animation-delay: 0.3s;
-        }
-        
-        .cursor {
-          display: inline-block;
-          width: 3px;
-          height: 14px;
-          background-color: #333;
-          margin-left: 2px;
-          animation: blink 1s infinite;
-          vertical-align: middle;
-        }
-        
-        .chatbot-input textarea {
-          width: calc(100% - 50px);
-          min-height: 40px;
-          padding: 10px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          resize: vertical;
-          font-size: 14px;
-          font-family: inherit;
-          transition: border-color 0.3s, box-shadow 0.3s;
-        }
-        
-        .chatbot-input textarea:focus {
-          outline: none;
-          border-color: #2c5282;
-          box-shadow: 0 0 5px rgba(44,82,130,0.5);
-        }
-        
-        @keyframes bounce {
-          0%, 60%, 100% {
-            transform: translateY(0);
-          }
-          30% {
-            transform: translateY(-4px);
-          }
-        }
-        
-        @keyframes blink {
-          0%, 49% {
-            opacity: 1;
-          }
-          50%, 100% {
-            opacity: 0;
-          }
-        }
-      `}</style>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
