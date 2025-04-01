@@ -397,9 +397,9 @@ function App() {
             <div className="chatbot-header">
               <div className="chatbot-title">
                 <div className="chatbot-avatar">
-                  <img src="/logo2.svg" alt="Assistant" />
+                  <img src="/logo.png" alt="Assistant" />
                 </div>
-                <span>Contract Assistant</span>
+                <span>MyGuard Contract Assistant</span>
               </div>
               <button className="chatbot-close" onClick={() => setIsChatOpen(false)}>
                 <svg viewBox="0 0 24 24" width="18" height="18">
@@ -412,7 +412,7 @@ function App() {
                 <div key={message.id || index} className={`message ${message.type}`}>
                   {(message.type === 'bot' || message.type === 'bot-typing') && (
                     <div className="message-avatar">
-                      <img src="/logo2.svg" alt="Bot" />
+                      <img src="/logo.png" alt="Bot" />
                     </div>
                   )}
                   <div className="message-content">
@@ -443,12 +443,18 @@ function App() {
               <div ref={messagesEndRef} />
             </div>
             <form className="chatbot-input" onSubmit={handleSendMessage}>
-              <input
-                type="text"
+              <textarea
                 placeholder="Ask about contract analysis..."
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage(e);
+                  }
+                }}
                 disabled={isBotTyping}
+                rows={1}
               />
               <button type="submit" disabled={isBotTyping}>
                 <svg viewBox="0 0 24 24" width="20" height="20">
@@ -692,6 +698,24 @@ function App() {
           margin-left: 2px;
           animation: blink 1s infinite;
           vertical-align: middle;
+        }
+        
+        .chatbot-input textarea {
+          width: calc(100% - 50px);
+          min-height: 40px;
+          padding: 10px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          resize: vertical;
+          font-size: 14px;
+          font-family: inherit;
+          transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        .chatbot-input textarea:focus {
+          outline: none;
+          border-color: #2c5282;
+          box-shadow: 0 0 5px rgba(44,82,130,0.5);
         }
         
         @keyframes bounce {
