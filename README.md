@@ -94,10 +94,6 @@ myGuard/
    ```bash
    dfx deploy --network ic
    ```
-3. **Deploy Localy**
-   ```bash
-   dfx deploy
-   ```
 ## Troubleshooting
 
 ### Common Issues
