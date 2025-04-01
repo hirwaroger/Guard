@@ -1,0 +1,27 @@
+{
+  "canisters": {
+    "myGuard_backend": {
+      "candid": "src/myGuard_backend/myGuard_backend.did",
+      "package": "myGuard_backend",
+      "type": "rust"
+    },
+    "myGuard_frontend": {
+      "dependencies": [
+        "myGuard_backend"
+      ],
+      "source": [
+        "src/myGuard_frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "myGuard_frontend"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
