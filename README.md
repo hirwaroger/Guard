@@ -52,7 +52,7 @@ Before running MyGuard, ensure you have the following installed:
 
 4. **Deploy the canisters**
    ```bash
-   dfx deploy
+   chmod +x deploy.sh && ./deploy.sh
    ```
 
 ## Development

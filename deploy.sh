@@ -55,3 +55,14 @@ echo ""
 echo "You can also use these commands to interact with your canisters:"
 echo "- Check dataset size: dfx canister call myGuard_backend get_dataset_size"
 echo "- Test greeting: dfx canister call myGuard_backend greet '(\"World\")'"
+
+# ===== New: Deploy to Playground =====
+echo ""
+echo "===== Deploying to Playground ====="
+dfx deploy --playground
+echo "===== Playground Deployment Complete ====="
+PLAYGROUND_FRONTEND_ID=$(dfx canister id myGuard_frontend)
+PLAYGROUND_BACKEND_ID=$(dfx canister id myGuard_backend)
+echo "Playground Frontend canister: $PLAYGROUND_FRONTEND_ID"
+echo "Playground Backend canister: $PLAYGROUND_BACKEND_ID"
+echo "Playground application is available at: http://localhost:4943/?canisterId=$PLAYGROUND_FRONTEND_ID"
