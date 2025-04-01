@@ -21,8 +21,8 @@ echo "Cleaning up previous build artifacts..."
 rm -rf .dfx/local/canisters/myGuard_backend/myGuard_backend.wasm
 
 # Create the canisters if they don't exist yet
-echo "Ensuring canisters are created..."
-dfx canister create --all || true
+# echo "Ensuring canisters are created..."
+# dfx canister create --all || true
 
 # Build the Rust backend directly
 echo "Building Rust backend..."
@@ -36,33 +36,33 @@ cp target/wasm32-unknown-unknown/release/myGuard_backend.wasm .dfx/local/caniste
 
 # Install the wasm module to the canister
 echo "Installing backend canister..."
-dfx canister install --mode=reinstall myGuard_backend
+# dfx canister install --mode=reinstall myGuard_backend
 
 # Build and install the frontend
 echo "Building and installing frontend..."
-dfx deploy myGuard_frontend
+# dfx deploy myGuard_frontend
 
 # Show URLs
-echo ""
-echo "===== Deployment Complete ====="
-FRONTEND_ID=$(dfx canister id myGuard_frontend)
-BACKEND_ID=$(dfx canister id myGuard_backend)
-echo "Frontend canister: $FRONTEND_ID"
-echo "Backend canister: $BACKEND_ID"
-echo "Your application is available at: http://localhost:4943/?canisterId=$FRONTEND_ID"
+# echo ""
+# echo "===== Deployment Complete ====="
+# FRONTEND_ID=$(dfx canister id myGuard_frontend)
+# BACKEND_ID=$(dfx canister id myGuard_backend)
+# echo "Frontend canister: $FRONTEND_ID"
+# echo "Backend canister: $BACKEND_ID"
+# echo "Your application is available at: http://localhost:4943/?canisterId=$FRONTEND_ID"
 
-echo ""
-echo "You can also use these commands to interact with your canisters:"
-echo "- Check dataset size: dfx canister call myGuard_backend get_dataset_size"
-echo "- Test greeting: dfx canister call myGuard_backend greet '(\"World\")'"
+# echo ""
+# echo "You can also use these commands to interact with your canisters:"
+# echo "- Check dataset size: dfx canister call myGuard_backend get_dataset_size"
+# echo "- Test greeting: dfx canister call myGuard_backend greet '(\"World\")'"
 
 # ===== New: Deploy to Playground =====
 echo ""
 echo "===== Deploying to Playground ====="
 dfx deploy --playground
 echo "===== Playground Deployment Complete ====="
-PLAYGROUND_FRONTEND_ID=$(dfx canister id myGuard_frontend)
-PLAYGROUND_BACKEND_ID=$(dfx canister id myGuard_backend)
-echo "Playground Frontend canister: $PLAYGROUND_FRONTEND_ID"
-echo "Playground Backend canister: $PLAYGROUND_BACKEND_ID"
-echo "Playground application is available at: http://localhost:4943/?canisterId=$PLAYGROUND_FRONTEND_ID"
+# PLAYGROUND_FRONTEND_ID=$(dfx canister id myGuard_frontend)
+# PLAYGROUND_BACKEND_ID=$(dfx canister id myGuard_backend)
+# echo "Playground Frontend canister: $PLAYGROUND_FRONTEND_ID"
+# echo "Playground Backend canister: $PLAYGROUND_BACKEND_ID"
+# echo "Playground application is available at: http://localhost:4943/?canisterId=$PLAYGROUND_FRONTEND_ID"
