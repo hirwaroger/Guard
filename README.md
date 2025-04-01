@@ -68,11 +68,6 @@ Before running MyGuard, ensure you have the following installed:
    dfx build
    ```
 
-3. **Deploy changes**
-   ```bash
-   dfx deploy
-   ```
-
 ## Project Structure
 
 ```
