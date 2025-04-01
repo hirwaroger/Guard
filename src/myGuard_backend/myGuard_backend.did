@@ -15,7 +15,7 @@ type ContractAnalysisResult = record {
 
 service : {
   "analyze_contract" : (text) -> (ContractAnalysisResult);
-  "chat_with_llm" : (text) -> (variant { Ok : text; Err : text });
+  "chat_with_llm" : (text) -> (text);
   "get_dataset_size" : () -> (nat64) query;
   "greet" : (text) -> (text) query;
 }

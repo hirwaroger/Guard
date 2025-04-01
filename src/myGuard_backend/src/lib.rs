@@ -1,9 +1,9 @@
 use std::io::Cursor;
 use candid::{CandidType, Deserialize};
 use serde::Serialize;
-use ic_cdk::{query, update, init};
-use serde_json::Value;
-use std::cell::RefCell;
+// Remove unused imports
+// Add ic-llm imports
+use ic_llm::{Model, ChatMessage, Role};
 
 // Original greeting function
 #[ic_cdk::query]
@@ -35,15 +35,12 @@ struct ContractAnalysisResult {
     clause_breakdown: Vec<ClauseAnalysis>,
 }
 
-// Define data structures for advanced analysis
-#[derive(Debug, Deserialize)]
-struct ChatRequest {
-    prompt: String,
-}
-
-#[derive(Debug, Serialize)]
-struct ChatResponse {
-    response: String,
+// Add the missing ContractExplanation struct
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+struct ContractExplanation {
+    summary: String,
+    key_points: Vec<String>,
+    recommendations: String,
 }
 
 // CSV data as embedded string
@@ -272,7 +269,68 @@ fn enhanced_analyze(contract_text: &str) -> Result<Vec<ClauseAnalysis>, String> 
     }
 }
 
-// Update the analyze_contract function to use our enhanced analyzer
+// Enhanced analyzer with LLM-based classification
+async fn llm_analyze(contract_text: &str) -> Result<Vec<ClauseAnalysis>, String> {
+    let clauses: Vec<&str> = contract_text
+        .split(|c| c == '.' || c == '\n')
+        .filter(|s| !s.trim().is_empty())
+        .collect();
+    
+    ic_cdk::println!("Analyzing {} clauses with LLM", clauses.len());
+    
+    let mut clause_analyses = Vec::new();
+    
+    for clause in clauses {
+        let clause_text = clause.trim().to_string();
+        if clause_text.is_empty() {
+            continue;
+        }
+        
+        // Check if the clause has fewer than 3 words
+        let word_count = clause_text.split_whitespace().count();
+        if word_count < 3 {
+            clause_analyses.push(ClauseAnalysis {
+                clause: clause_text,
+                label: "Neutral".to_string(),
+                similarity: 0.5, // Medium confidence
+            });
+            continue;
+        }
+        
+        // Use LLM to classify the clause
+        let prompt = format!(
+            "Analyze this contract clause and respond ONLY with either 'Allowed' or 'Not Allowed': '{}'",
+            clause_text
+        );
+        
+        let response = ic_llm::prompt(Model::Llama3_1_8B, prompt).await;
+        let cleaned_response = clean_llm_response(response);
+        
+        // Determine the label from LLM response
+        let label = if cleaned_response.to_lowercase().contains("not allowed") {
+            "Not Allowed".to_string()
+        } else if cleaned_response.to_lowercase().contains("allowed") {
+            "Allowed".to_string()
+        } else {
+            // Fallback if LLM response is unclear
+            "Unclassified".to_string()
+        };
+        
+        clause_analyses.push(ClauseAnalysis {
+            clause: clause_text,
+            label,
+            similarity: 0.9, // High confidence for LLM classification
+        });
+    }
+    
+    if clause_analyses.is_empty() {
+        Err("No clauses were successfully analyzed".to_string())
+    } else {
+        Ok(clause_analyses)
+    }
+}
+
+// Update the analyze_contract function to use our LLM analyzer
 #[ic_cdk::update]
 async fn analyze_contract(contract_text: String) -> ContractAnalysisResult {
     let clauses: Vec<&str> = contract_text
@@ -282,7 +340,8 @@ async fn analyze_contract(contract_text: String) -> ContractAnalysisResult {
     
     let total_clauses = clauses.len();
     
-    match enhanced_analyze(&contract_text) {
+    // Try LLM analysis first
+    match llm_analyze(&contract_text).await {
         Ok(analyses) => {
             let clause_breakdown = analyses;
             let allowed_count = clause_breakdown.iter()
@@ -314,9 +373,45 @@ async fn analyze_contract(contract_text: String) -> ContractAnalysisResult {
                 clause_breakdown,
             }
         },
+        // Fallback to rule-based analysis if LLM analysis fails
         Err(_) => {
-            // Fall back to simple similarity-based analysis
-            fallback_analyze_contract(contract_text)
+            match enhanced_analyze(&contract_text) {
+                Ok(analyses) => {
+                    let clause_breakdown = analyses;
+                    let allowed_count = clause_breakdown.iter()
+                        .filter(|ca| ca.label == "Allowed")
+                        .count();
+                    let not_allowed_count = clause_breakdown.iter()
+                        .filter(|ca| ca.label == "Not Allowed")
+                        .count();
+                    
+                    // Calculate percentages
+                    let allowed_percentage = if total_clauses > 0 {
+                        (allowed_count as f64 / total_clauses as f64) * 100.0
+                    } else {
+                        0.0
+                    };
+                    
+                    let not_allowed_percentage = if total_clauses > 0 {
+                        (not_allowed_count as f64 / total_clauses as f64) * 100.0
+                    } else {
+                        0.0
+                    };
+                    
+                    ContractAnalysisResult {
+                        total_clauses,
+                        allowed_clauses: allowed_count,
+                        not_allowed_clauses: not_allowed_count,
+                        allowed_percentage,
+                        not_allowed_percentage,
+                        clause_breakdown,
+                    }
+                },
+                Err(_) => {
+                    // Final fallback to simple similarity-based analysis
+                    fallback_analyze_contract(contract_text)
+                }
+            }
         }
     }
 }
@@ -385,23 +480,144 @@ fn get_dataset_size() -> usize {
     })
 }
 
-// Create an API endpoint for simple rule-based responses
+// Update the chat function to return String directly
 #[ic_cdk::update]
-async fn chat_with_llm(prompt: String) -> Result<String, String> {
-    let prompt_lower = prompt.to_lowercase();
-    
-    // Simple rule-based responses without any randomness
-    if prompt_lower.contains("hello") || prompt_lower.contains("hi ") {
-        Ok("Hello! I'm the MyGuard contract analyzer. How can I help you with contract analysis today?".to_string())
-    } else if prompt_lower.contains("contract") || prompt_lower.contains("clause") || prompt_lower.contains("agreement") {
-        Ok("I can help analyze contracts for potentially unfair clauses. Please use the analyzer tool above with your full contract text.".to_string())
-    } else if prompt_lower.contains("how") && (prompt_lower.contains("work") || prompt_lower.contains("analyze")) {
-        Ok("I analyze contracts by comparing clauses to a dataset of known fair and unfair clauses, plus applying rules about common unfair terms.".to_string())
-    } else if prompt_lower.contains("thank") {
-        Ok("You're welcome! Let me know if you need more help with your contracts.".to_string())
-    } else {
-        Ok("I'm specialized in contract analysis. Please try the contract analyzer tool above for best results.".to_string())
+async fn chat_with_llm(prompt: String) -> String {
+    if prompt.trim().is_empty() {
+        return "Please provide a question or topic to discuss.".to_string();
     }
+
+    let messages = vec![
+        ChatMessage {
+            role: Role::System,
+            content: "You are MyGuard, a helpful contract analysis assistant that specializes in legal document review. Provide short and focused answers about contract clauses, legal terms, and document analysis. When identifying potentially unfair clauses, be specific about why they might be problematic. Keep responses concise (under 200 words) and always identify yourself as MyGuard.".to_string(),
+        },
+        ChatMessage {
+            role: Role::User,
+            content: prompt,
+        },
+    ];
+
+    // Get the LLM response, handle errors internally
+    let response = ic_llm::chat(Model::Llama3_1_8B, messages).await;
+    
+    if response.trim().is_empty() {
+        return "I'm MyGuard, and I'm sorry, but I couldn't generate a response. Please try rephrasing your question.".to_string();
+    } else {
+        response
+    }
+}
+
+// Update the contract prompt function to return Result
+#[ic_cdk::update]
+async fn quick_contract_prompt(prompt: String) -> Result<String, String> {
+    if prompt.trim().is_empty() {
+        return Err("Empty prompt received".to_string());
+    }
+    
+    let formatted_prompt = format!(
+        "Answer this contract-related question concisely (under 100 words): {}",
+        prompt
+    );
+    
+    let response = ic_llm::prompt(Model::Llama3_1_8B, formatted_prompt).await;
+    
+    if response.trim().is_empty() {
+        Err("Received empty response from language model".to_string())
+    } else {
+        Ok(response)
+    }
+}
+
+// Update the clause analysis function to return Result
+#[ic_cdk::update]
+async fn analyze_clause(clause: String) -> Result<String, String> {
+    if clause.trim().is_empty() {
+        return Err("Empty clause received".to_string());
+    }
+    
+    let prompt = format!(
+        "Analyze this contract clause and determine if it is fair or potentially unfair. Respond with ONLY 'Allowed' or 'Not Allowed': '{}'",
+        clause
+    );
+    
+    let response = ic_llm::prompt(Model::Llama3_1_8B, prompt).await;
+    let cleaned = clean_llm_response(response);
+    
+    if cleaned.trim().is_empty() {
+        Err("Received empty response from language model".to_string())
+    } else {
+        Ok(cleaned)
+    }
+}
+
+// Update the contract explanation function to return Result
+#[ic_cdk::update]
+async fn explain_contract(contract_text: String) -> Result<ContractExplanation, String> {
+    if contract_text.trim().is_empty() {
+        return Err("Empty contract text received".to_string());
+    }
+    
+    // Generate contract summary
+    let summary_prompt = format!(
+        "Provide a brief 2-3 sentence summary of this contract clause: '{}'",
+        contract_text
+    );
+    let summary = clean_llm_response(ic_llm::prompt(Model::Llama3_1_8B, summary_prompt).await);
+
+    // Extract key points
+    let key_points_prompt = format!(
+        "List 3 key points from this contract clause as short bullet points without explanations: '{}'",
+        contract_text
+    );
+    let key_points_text = clean_llm_response(ic_llm::prompt(Model::Llama3_1_8B, key_points_prompt).await);
+    let key_points = key_points_text
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| line.trim_start_matches(['-', '*', '•', ' ']).trim().to_string())
+        .collect::<Vec<String>>();
+
+    // Generate recommendations
+    let recommendations_prompt = format!(
+        "Provide 1-2 recommendations regarding this contract clause: '{}'",
+        contract_text
+    );
+    let recommendations = clean_llm_response(ic_llm::prompt(Model::Llama3_1_8B, recommendations_prompt).await);
+
+    Ok(ContractExplanation {
+        summary,
+        key_points,
+        recommendations,
+    })
+}
+
+// Clean LLM responses to extract key information
+fn clean_llm_response(text: String) -> String {
+    text.lines()
+        .skip_while(|line| {
+            line.is_empty() 
+            || line.contains("Here's") 
+            || line.contains("Below is")
+            || line.contains("```")
+            || line.contains("**")
+            || line.starts_with('#')
+        })
+        .collect::<Vec<&str>>()
+        .join("\n")
+        .trim()
+        .to_string()
+}
+
+// Example contract tips
+#[ic_cdk::query]
+fn get_contract_tips() -> Vec<String> {
+    vec![
+        "Always read the entire contract before signing".to_string(),
+        "Pay attention to termination clauses and notice periods".to_string(),
+        "Look for clauses that limit liability or rights".to_string(),
+        "Watch for automatic renewal terms".to_string(),
+        "Understand payment terms and late fee structures".to_string(),
+    ]
 }
 
 // Export the Candid interface
