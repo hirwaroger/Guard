@@ -299,7 +299,7 @@ async fn llm_analyze(contract_text: &str) -> Result<Vec<ClauseAnalysis>, String>
         
         // Use LLM to classify the clause
         let prompt = format!(
-            "Analyze this contract clause and respond ONLY with either 'Allowed' or 'Not Allowed': '{}'",
+            "Analyze this contract clause and respond ONLY with either 'Allowed' or 'Not Allowed', and make sure the response appears as following Rules and Regulation in Rwanda: '{}'",
             clause_text
         );
         
@@ -490,7 +490,7 @@ async fn chat_with_llm(prompt: String) -> String {
     let messages = vec![
         ChatMessage {
             role: Role::System,
-            content: "You are MyGuard, a helpful contract analysis assistant that specializes in legal document review. Provide short and focused answers about contract clauses, legal terms, and document analysis. When identifying potentially unfair clauses, be specific about why they might be problematic. Keep responses concise (under 200 words) and always identify yourself as MyGuard.".to_string(),
+            content: "You are MyGuard, a helpful contract analysis assistant that specializes in legal document review. Provide short and focused answers about contract clauses, legal terms, and document analysis. When identifying potentially unfair clauses, be specific about why they might be problematic. Keep responses concise (under 200 words) and always identify yourself as MyGuard. Ensure all responses conform to Rules and Regulation in Rwanda.".to_string(),
         },
         ChatMessage {
             role: Role::User,
@@ -516,7 +516,7 @@ async fn quick_contract_prompt(prompt: String) -> Result<String, String> {
     }
     
     let formatted_prompt = format!(
-        "Answer this contract-related question concisely (under 100 words): {}",
+        "Answer this contract-related question concisely (under 100 words), ensuring your response appears as following Rules and Regulation in Rwanda: {}",
         prompt
     );
     
@@ -537,7 +537,7 @@ async fn analyze_clause(clause: String) -> Result<String, String> {
     }
     
     let prompt = format!(
-        "Analyze this contract clause and determine if it is fair or potentially unfair. Respond with ONLY 'Allowed' or 'Not Allowed': '{}'",
+        "Analyze this contract clause and determine if it is fair or potentially unfair. Respond with ONLY 'Allowed' or 'Not Allowed', and ensure the response appears as following Rules and Regulation in Rwanda: '{}'",
         clause
     );
     
@@ -560,14 +560,14 @@ async fn explain_contract(contract_text: String) -> Result<ContractExplanation, 
     
     // Generate contract summary
     let summary_prompt = format!(
-        "Provide a brief 2-3 sentence summary of this contract clause: '{}'",
+        "Provide a brief 2-3 sentence summary of this contract clause, ensuring your response appears as following Rules and Regulation in Rwanda: '{}'",
         contract_text
     );
     let summary = clean_llm_response(ic_llm::prompt(Model::Llama3_1_8B, summary_prompt).await);
 
     // Extract key points
     let key_points_prompt = format!(
-        "List 3 key points from this contract clause as short bullet points without explanations: '{}'",
+        "List 3 key points from this contract clause as short bullet points without explanations, ensuring your response appears as following Rules and Regulation in Rwanda: '{}'",
         contract_text
     );
     let key_points_text = clean_llm_response(ic_llm::prompt(Model::Llama3_1_8B, key_points_prompt).await);
@@ -579,7 +579,7 @@ async fn explain_contract(contract_text: String) -> Result<ContractExplanation, 
 
     // Generate recommendations
     let recommendations_prompt = format!(
-        "Provide 1-2 recommendations regarding this contract clause: '{}'",
+        "Provide 1-2 recommendations regarding this contract clause, ensuring your response appears as following Rules and Regulation in Rwanda: '{}'",
         contract_text
     );
     let recommendations = clean_llm_response(ic_llm::prompt(Model::Llama3_1_8B, recommendations_prompt).await);
