@@ -1,61 +1,174 @@
-# `myGuard`
+# MyGuard - AI-Powered Contract Analysis
 
-Welcome to your new `myGuard` project and to the Internet Computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
+MyGuard is an intelligent contract analysis tool built on the Internet Computer (ICP) platform that helps users identify potentially risky clauses in legal documents using AI-powered analysis.
 
-To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
+## Features
 
-To learn more before you start working with `myGuard`, see the following documentation available online:
+- 🔍 Smart contract clause analysis
+- ⚡ Real-time risk assessment
+- 🤖 AI-powered chatbot assistant
+- 📊 Clear visualization of analysis results
+- 🔒 Secure and private analysis
 
-- [Quick Start](https://internetcomputer.org/docs/current/developer-docs/setup/deploy-locally)
-- [SDK Developer Tools](https://internetcomputer.org/docs/current/developer-docs/setup/install)
-- [Rust Canister Development Guide](https://internetcomputer.org/docs/current/developer-docs/backend/rust/)
-- [ic-cdk](https://docs.rs/ic-cdk)
-- [ic-cdk-macros](https://docs.rs/ic-cdk-macros)
-- [Candid Introduction](https://internetcomputer.org/docs/current/developer-docs/backend/candid/)
+## Prerequisites
 
-If you want to start working on your project right away, you might want to try the following commands:
+Before running MyGuard, ensure you have the following installed:
 
-```bash
-cd myGuard/
-dfx help
-dfx canister --help
+1. **Rust and Cargo**
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   source "$HOME/.cargo/env"
+   rustup target add wasm32-unknown-unknown
+   ```
+
+2. **DFX (Internet Computer SDK)**
+   ```bash
+   sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+   ```
+
+3. **Node.js and npm** (v16 or higher recommended)
+   ```bash
+   curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+   ```
+
+## Project Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd myGuard
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start the local Internet Computer replica**
+   ```bash
+   dfx start --clean --background
+   ```
+
+4. **Deploy the canisters**
+   ```bash
+   dfx deploy
+   ```
+
+## Development
+
+1. **Start the development server**
+   ```bash
+   npm start
+   ```
+   This will start the frontend development server at `http://localhost:8080`
+
+2. **Build the project**
+   ```bash
+   dfx build
+   ```
+
+3. **Deploy changes**
+   ```bash
+   dfx deploy
+   ```
+
+## Project Structure
+
+```
+myGuard/
+├── src/
+│   ├── myGuard_frontend/     # Frontend React application
+│   │   ├── src/
+│   │   │   ├── App.jsx      # Main application component
+│   │   │   └── index.scss   # Styles
+│   │   └── assets/          # Static assets
+│   └── myGuard_backend/     # Rust backend canister
+│       └── src/
+│           └── lib.rs       # Backend logic
+├── dfx.json                 # DFX configuration
+└── package.json            # Project dependencies
 ```
 
-## Running the project locally
+## Configuration
 
-If you want to test your project locally, you can use the following commands:
+1. **Backend Configuration**
+   - The backend uses a pre-trained dataset for contract analysis
+   - Modify `src/myGuard_backend/src/lib.rs` to adjust analysis parameters
 
-```bash
-# Starts the replica, running in the background
-dfx start --background
+2. **Frontend Configuration**
+   - Environment variables can be set in `.env`
+   - UI components are in `src/myGuard_frontend/src/App.jsx`
 
-# Deploys your canisters to the replica and generates your candid interface
-dfx deploy
-```
+## Production Deployment
 
-Once the job completes, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
+1. **Build for production**
+   ```bash
+   dfx build --network ic
+   ```
 
-If you have made changes to your backend canister, you can generate a new candid interface with
+2. **Deploy to IC network**
+   ```bash
+   dfx deploy --network ic
+   ```
+3. **Deploy Localy**
+   ```bash
+   dfx deploy
+   ```
+## Troubleshooting
 
-```bash
-npm run generate
-```
+### Common Issues
 
-at any time. This is recommended before starting the frontend development server, and will be run automatically any time you run `dfx deploy`.
+1. **Rust Compilation Errors**
+   - Ensure Rust and wasm target are properly installed
+   - Try `cargo clean` and rebuild
 
-If you are making frontend changes, you can start a development server with
+2. **DFX Connection Issues**
+   - Verify dfx is running: `dfx start --clean`
+   - Check network connectivity
 
-```bash
-npm start
-```
+3. **Frontend Build Problems**
+   - Clear npm cache: `npm clean-cache --force`
+   - Reinstall dependencies: `npm ci`
 
-Which will start a server at `http://localhost:8080`, proxying API requests to the replica at port 4943.
+### Error Messages
 
-### Note on frontend environment variables
+- `Error: Cannot find dfx`: Make sure dfx is installed and in your PATH
+- `Error: Rust compiler not found`: Install Rust and required targets
+- `Error: Connection refused`: Start dfx service first
 
-If you are hosting frontend code somewhere without using DFX, you may need to make one of the following adjustments to ensure your project does not fetch the root key in production:
+## Security Considerations
 
-- set`DFX_NETWORK` to `ic` if you are using Webpack
-- use your own preferred method to replace `process.env.DFX_NETWORK` in the autogenerated declarations
-  - Setting `canisters -> {asset_canister_id} -> declarations -> env_override to a string` in `dfx.json` will replace `process.env.DFX_NETWORK` with the string in the autogenerated declarations
-- Write your own `createActor` constructor
+- This tool is for educational purposes only
+- Do not input sensitive or confidential information
+- Results should be reviewed by legal professionals
+- Data is processed locally within the IC canister
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## Support
+
+For support and questions:
+- Open an issue in the repository
+- Contact the development team
+
+## Acknowledgments
+
+- Built with Internet Computer (ICP)
+- Uses React for frontend
+- Rust-based backend processing
+- AI-powered analysis engine
+
+---
+
+**Note**: This is an educational tool and should not be used as a replacement for professional legal advice. Always consult with qualified legal professionals for important contract matters.

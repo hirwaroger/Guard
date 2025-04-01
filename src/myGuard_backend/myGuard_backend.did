@@ -1,3 +1,21 @@
+type ClauseAnalysis = record {
+  clause : text;
+  label : text;
+  similarity : float64;
+};
+
+type ContractAnalysisResult = record {
+  allowed_clauses : nat64;
+  allowed_percentage : float64;
+  clause_breakdown : vec ClauseAnalysis;
+  not_allowed_clauses : nat64;
+  not_allowed_percentage : float64;
+  total_clauses : nat64;
+};
+
 service : {
-    "greet": (text) -> (text) query;
+  "analyze_contract" : (text) -> (ContractAnalysisResult);
+  "chat_with_llm" : (text) -> (variant { Ok : text; Err : text });
+  "get_dataset_size" : () -> (nat64) query;
+  "greet" : (text) -> (text) query;
 }

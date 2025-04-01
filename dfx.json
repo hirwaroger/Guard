@@ -23,5 +23,13 @@
     }
   },
   "output_env_file": ".env",
-  "version": 1
+  "version": 1,
+  "hooks": {
+    "deploy": {
+      "commands": [
+        "if [ ! -x ./deploy.sh ]; then chmod +x ./deploy.sh; fi",
+        "./deploy.sh"
+      ]
+    }
+  }
 }
